@@ -1,0 +1,83 @@
+[package]
+name = "erofs-win-driver"
+version = "0.1.0"
+edition = "2021"
+# GPL-3.0-or-later because the WinFsp Rust bindings (`winfsp` crate, vendored
+# under ../winfsp-rs) are GPL-3.0. The CLI alone (without the `mount`
+# feature) does not link winfsp and could be relicensed if ever split out,
+# but to keep the distribution unit single-licensed we declare GPL-3.0
+# here. Our own `am-fs-erofs` library remains MIT — one-way compatible.
+license = "GPL-3.0-or-later"
+description = "Read-only EROFS (Enhanced Read-Only File System) driver for Windows, built on WinFsp."
+repository = "https://github.com/AntimatterStudios/erofs-win-driver"
+
+[dependencies]
+anyhow = "1"
+clap = { version = "4", features = ["derive"] }
+# winfsp-fs-skeleton owns the SCM dispatcher, disk-arrival event pump,
+# partition walker, raw-device I/O with sector alignment, and drive-
+# letter selection. We supply only the EROFS-specific superblock-magic
+# detect via the FsBackend trait. The skeleton has cross-platform stubs
+# for non-windows hosts so it stays in [dependencies], not the
+# windows-only block.
+winfsp-fs-skeleton = { path = "../winfsp-fs-skeleton", features = ["service"] }
+am-fs-core = { path = "../rust-fs-core", version = "0.1" }
+am-fs-erofs = { path = "../rust-fs-erofs", version = "0.1" }
+# `watch` subcommand uses ctrlc on Windows. Pulled in unconditionally
+# (cheap, cross-platform) so the same handler code wires the foreground
+# `watch` and the WinFsp `mount` Ctrl-C path.
+ctrlc = "3"
+# Optional, enabled via the `overlay-sidecar` feature. Used solely by
+# the `--scratch-sidecar` dismount policy, which serialises the in-
+# memory overlay state to a JSON file for later replay or audit. Kept
+# behind a feature gate so users who never invoke that policy don't
+# pay the binary-size cost.
+serde = { version = "1", features = ["derive"], optional = true }
+serde_json = { version = "1", optional = true }
+
+[dev-dependencies]
+# Used by mount.rs's smoke tests to materialise a synthesised EROFS
+# image to a real path on disk so `Mount::open` (which goes through
+# `FileSource::open`) can exercise the file-backed read path on the
+# host.
+tempfile = "3"
+
+[target.'cfg(windows)'.dependencies]
+# WinFsp + helpers. Optional + Windows-target-only — pulled in when the
+# `mount` feature is enabled AND the build target is Windows. On macOS
+# the `mount` feature does nothing (the cfg-gated module is empty).
+#
+# Path-depended on the antimatter-studios fork of winfsp-rs (vendored
+# at ../winfsp-rs) because the upstream build.rs gates the .lib lookup
+# on MSVC-only; the fork lifts that gate so *-pc-windows-gnullvm Rust
+# toolchains can consume the same MSVC-format .lib through lld-link.
+winfsp = { path = "../winfsp-rs/winfsp", features = ["delayload", "system"], optional = true, default-features = false }
+windows = { version = "0.61", features = [
+    "Win32_Foundation",
+    "Win32_Storage_FileSystem",
+], optional = true }
+winfsp-sys = { path = "../winfsp-rs/winfsp-sys", optional = true }
+widestring = { version = "1", optional = true }
+
+[target.'cfg(windows)'.build-dependencies]
+# Only used when the `mount` feature is on; build.rs guards the call.
+# `delayload` implies the `build` feature in winfsp's Cargo.toml.
+winfsp = { path = "../winfsp-rs/winfsp", features = ["delayload"], default-features = false, optional = true }
+
+[features]
+default = []
+# Enables the `mount` subcommand (WinFsp driver). Active only on Windows
+# — on other targets the deps don't resolve and the cfg-gated code is
+# absent.
+mount = ["dep:winfsp", "dep:winfsp-sys", "dep:windows", "dep:widestring"]
+# Pulls in serde/serde_json so the dismount `--scratch-sidecar` policy
+# can serialise the read-write overlay state to a JSON sidecar file.
+# Off by default to keep the default binary smaller for users who only
+# ever read.
+overlay-sidecar = ["dep:serde", "dep:serde_json"]
+
+[profile.release]
+lto = true
+codegen-units = 1
+opt-level = 3
+panic = "abort"
