@@ -269,7 +269,7 @@ try {
         -ext WixToolset.Util.wixext `
         -ext WixToolset.BootstrapperApplications.wixext `
         -d "Version=$Version" `
-        -d "Ext4Msi=$msiOut" `
+        -d "ErofsMsi=$msiOut" `
         -d "WinFspMsi=$winFspMsi" `
         -d "WinFspVersion=$WinFspVersion" `
         -arch $Arch `

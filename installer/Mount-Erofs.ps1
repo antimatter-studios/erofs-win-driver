@@ -25,10 +25,10 @@
   filesystem inspection, etc).
 
 .EXAMPLE
-  Mount-Ext4.ps1 C:\images\rootfs.img
-  Mount-Ext4.ps1 -ImagePath disk.img -DriveLetter Y: -Part 1
-  Mount-Ext4.ps1 -ImagePath disk.img -ReadOnly  # safe inspection mode
-  Mount-Ext4.ps1                                # opens file picker
+  Mount-Erofs.ps1 C:\images\rootfs.img
+  Mount-Erofs.ps1 -ImagePath disk.img -DriveLetter Y: -Part 1
+  Mount-Erofs.ps1 -ImagePath disk.img -ReadOnly  # safe inspection mode
+  Mount-Erofs.ps1                                # opens file picker
 #>
 
 [CmdletBinding()]

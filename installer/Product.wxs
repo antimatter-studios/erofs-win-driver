@@ -60,9 +60,9 @@
          ==================================================================== -->
     <ComponentGroup Id="ProductComponents" Directory="INSTALLFOLDER">
 
-      <Component Id="Ext4Exe" Guid="*">
+      <Component Id="ErofsExe" Guid="*">
         <File
-            Id="Ext4ExeFile"
+            Id="ErofsExeFile"
             Source="$(var.ExePath)"
             KeyPath="yes"
             Name="erofs.exe" />
@@ -115,9 +115,9 @@
       <Component Id="MountScript" Guid="*">
         <File
             Id="MountScriptFile"
-            Source="Mount-Ext4.ps1"
+            Source="Mount-Erofs.ps1"
             KeyPath="yes"
-            Name="Mount-Ext4.ps1" />
+            Name="Mount-Erofs.ps1" />
       </Component>
 
       <Component Id="LicenseFile" Guid="*">
@@ -213,7 +213,7 @@
     <ComponentGroup Id="ContextMenuComponents" Directory="INSTALLFOLDER">
 
       <Component Id="ContextMenuVerb" Guid="*">
-        <RegistryKey Root="HKCR" Key="SystemFileAssociations\.img\shell\MountAsExt4">
+        <RegistryKey Root="HKCR" Key="SystemFileAssociations\.img\shell\MountAsErofs">
           <RegistryValue
               Type="string"
               Value="Mount as erofs"
@@ -230,10 +230,10 @@
       </Component>
 
       <Component Id="ContextMenuCommand" Guid="*">
-        <RegistryKey Root="HKCR" Key="SystemFileAssociations\.img\shell\MountAsExt4\command">
+        <RegistryKey Root="HKCR" Key="SystemFileAssociations\.img\shell\MountAsErofs\command">
           <RegistryValue
               Type="string"
-              Value="powershell.exe -NoProfile -ExecutionPolicy Bypass -File &quot;[INSTALLFOLDER]Mount-Ext4.ps1&quot; &quot;%1&quot;"
+              Value="powershell.exe -NoProfile -ExecutionPolicy Bypass -File &quot;[INSTALLFOLDER]Mount-Erofs.ps1&quot; &quot;%1&quot;"
               KeyPath="yes" />
         </RegistryKey>
       </Component>
@@ -255,7 +255,7 @@
             Name="Mount erofs image..."
             Description="Pick an erofs .img file and mount it as a Windows drive letter."
             Target="powershell.exe"
-            Arguments="-NoExit -ExecutionPolicy Bypass -File &quot;[INSTALLFOLDER]Mount-Ext4.ps1&quot;"
+            Arguments="-NoExit -ExecutionPolicy Bypass -File &quot;[INSTALLFOLDER]Mount-Erofs.ps1&quot;"
             WorkingDirectory="INSTALLFOLDER"
             Icon="erofsIcon.exe"
             IconIndex="0" />

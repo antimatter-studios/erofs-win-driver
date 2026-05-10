@@ -10,7 +10,7 @@
   Built by `installer/build.ps1` after Product.msi is produced. The script
   passes:
     -d Version=<x.y.z>             from Cargo.toml
-    -d Ext4Msi=<path>              path to Product.msi just built
+    -d ErofsMsi=<path>              path to Product.msi just built
     -d WinFspMsi=<path>            path to the redistributable WinFsp MSI
     -d WinFspVersion=<x.y.z.b>     WinFsp's 4-part version (for DetectCondition)
 
@@ -91,8 +91,8 @@
           Compressed="yes" />
 
       <MsiPackage
-          Id="Ext4WinDriver"
-          SourceFile="$(var.Ext4Msi)"
+          Id="ErofsWinDriver"
+          SourceFile="$(var.ErofsMsi)"
           DisplayName="erofs-win-driver"
           Vital="yes"
           Visible="no"
