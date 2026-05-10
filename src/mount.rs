@@ -624,7 +624,7 @@ mod winfsp_adapter {
     };
     use windows::Win32::Storage::FileSystem::{
         FILE_ATTRIBUTE_DIRECTORY, FILE_ATTRIBUTE_NORMAL, FILE_ATTRIBUTE_READONLY,
-        FILE_ATTRIBUTE_REPARSE_POINT, FILE_FLAGS_AND_ATTRIBUTES,
+        FILE_ATTRIBUTE_REPARSE_POINT,
     };
     use winfsp::filesystem::{
         DirInfo, DirMarker, FileInfo, FileSecurity, FileSystemContext, ModificationDescriptor,
@@ -632,7 +632,12 @@ mod winfsp_adapter {
     };
     use winfsp::host::{FileSystemHost, VolumeParams};
     use winfsp::Result as FspResult;
-    use winfsp_sys::FILE_ACCESS_RIGHTS;
+    // FILE_FLAGS_AND_ATTRIBUTES from winfsp_sys is the bindgen u32
+    // alias the FileSystemContext trait expects; the windows crate's
+    // same-named newtype struct(u32) is signature-incompatible (see
+    // E0053 trait-method-incompatible-type errors when the wrong one
+    // is in scope on x64 / arm64 builds).
+    use winfsp_sys::{FILE_ACCESS_RIGHTS, FILE_FLAGS_AND_ATTRIBUTES};
 
     use fs_erofs::{FileType, Filesystem, Inode};
 
@@ -975,7 +980,7 @@ mod winfsp_adapter {
                         .ok_or_else(|| {
                             // Overlay-only handle whose entry vanished
                             // between `open` and `get_file_info`.
-                            winfsp::error::FspError::from(STATUS_OBJECT_NAME_NOT_FOUND)
+                            winfsp::FspError::from(STATUS_OBJECT_NAME_NOT_FOUND)
                         })?
                         .clone();
                     populate_file_info(&inode, file_info, read_only);
@@ -1015,7 +1020,7 @@ mod winfsp_adapter {
             let guard = context.inode.lock().unwrap();
             let inode = guard
                 .as_ref()
-                .ok_or_else(|| winfsp::error::FspError::from(STATUS_OBJECT_NAME_NOT_FOUND))?
+                .ok_or_else(|| winfsp::FspError::from(STATUS_OBJECT_NAME_NOT_FOUND))?
                 .clone();
             drop(guard);
             if offset >= inode.size {
@@ -1219,7 +1224,7 @@ mod winfsp_adapter {
                 return Err(STATUS_OBJECT_NAME_COLLISION.into());
             }
 
-            let is_dir = (file_attributes.0 & FILE_ATTRIBUTE_DIRECTORY.0) != 0;
+            let is_dir = (file_attributes & FILE_ATTRIBUTE_DIRECTORY.0) != 0;
             let read_only = self.is_read_only();
             if is_dir {
                 self.mount.overlay.create_dir(&unix_path, 0o040755);
@@ -1281,7 +1286,7 @@ mod winfsp_adapter {
             };
             let end = effective_offset
                 .checked_add(buffer.len() as u64)
-                .ok_or_else(|| winfsp::error::FspError::from(STATUS_INVALID_DEVICE_REQUEST))?;
+                .ok_or_else(|| winfsp::FspError::from(STATUS_INVALID_DEVICE_REQUEST))?;
             if constrained_io {
                 // constrained_io: don't extend beyond current EOF; clamp
                 // the write length to the available tail.
