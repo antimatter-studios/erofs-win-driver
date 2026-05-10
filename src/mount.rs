@@ -851,7 +851,14 @@ mod winfsp_adapter {
                 OverlayLookup::Hit(OverlayEntry::CreatedDir { .. }) => {
                     Err(STATUS_INVALID_DEVICE_REQUEST.into())
                 }
-                OverlayLookup::Deleted => Err(STATUS_OBJECT_NAME_NOT_FOUND.into()),
+                // `lookup` translates a stored `Deleted` entry into the
+                // top-level `Deleted` arm, so `Hit(Deleted)` shouldn't
+                // arise in practice -- but the type system can't know
+                // that, and treating it as "logically gone" matches
+                // the contract anyway.
+                OverlayLookup::Hit(OverlayEntry::Deleted) | OverlayLookup::Deleted => {
+                    Err(STATUS_OBJECT_NAME_NOT_FOUND.into())
+                }
                 OverlayLookup::Miss => {
                     let inode = self
                         .fs()
@@ -1389,7 +1396,12 @@ mod winfsp_adapter {
                 OverlayLookup::Hit(OverlayEntry::CreatedDir { mode, .. }) => {
                     (Vec::new(), mode, true)
                 }
-                OverlayLookup::Deleted => return Err(STATUS_OBJECT_NAME_NOT_FOUND.into()),
+                // Same caveat as in read_full: `Hit(Deleted)` is
+                // type-reachable but `lookup` collapses it into the
+                // top-level `Deleted`. Either way the source is gone.
+                OverlayLookup::Hit(OverlayEntry::Deleted) | OverlayLookup::Deleted => {
+                    return Err(STATUS_OBJECT_NAME_NOT_FOUND.into());
+                }
                 OverlayLookup::Miss => {
                     let inode = self.fs().lookup_path(&from).map_err(|e| err_to_status(e))?;
                     if inode.is_dir() {
