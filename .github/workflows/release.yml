@@ -45,10 +45,40 @@ jobs:
       # them directly to avoid winget's interactive prompts.
 
     steps:
-      - name: checkout (with submodules)
-        uses: actions/checkout@v4
-        with:
-          submodules: recursive
+      - uses: actions/checkout@v4
+        # No submodules; there are none left.
+
+      - name: check out sibling repos
+        # Every dependency is a sibling now, including the winfsp-rs
+        # fork. The pins live in chores.yml, and this reads them from
+        # there rather than restating them, so bumping one stays a
+        # one-line edit.
+        #
+        # Cloned directly rather than through `chore siblings`: chore
+        # publishes darwin and linux builds only, and `uname -s` under
+        # Git Bash reports MINGW64_NT-*. Kept identical to ci.yml -- if
+        # the two drift, CI stops predicting the release.
+        shell: bash
+        run: |
+          set -euo pipefail
+          pin() { sed -n "s/^  $1: *//p" chores.yml | tr -d '\r'; }
+          printf '%s\t%s\t%s\n' \
+            rust-fs-core       "$(pin FS_CORE_URL)" "$(pin FS_CORE_REF)" \
+            rust-fs-erofs      "$(pin FS_EROFS_URL)" "$(pin FS_EROFS_REF)" \
+            winfsp-fs-skeleton "$(pin SKELETON_URL)" "$(pin SKELETON_REF)" \
+            fs-test-harness    "$(pin HARNESS_URL)" "$(pin HARNESS_REF)" \
+            winfsp-rs          "$(pin WINFSP_RS_URL)" "$(pin WINFSP_RS_REF)" \
+          | while IFS="$(printf '\t')" read -r name url ref; do
+              echo "cloning $name at $ref"
+              # init + fetch-by-ref, not clone. winfsp-rs is pinned to a
+              # bare commit that no published branch contains, so a
+              # plain clone does not have it and `--branch` cannot name
+              # it. Asking the server for the SHA directly does work.
+              git init --quiet "../$name"
+              git -C "../$name" remote add origin "$url"
+              git -C "../$name" fetch --quiet --depth 1 origin "$ref"
+              git -C "../$name" checkout --quiet FETCH_HEAD
+            done
 
       - name: install Rust + gnullvm target
         shell: pwsh
@@ -131,7 +161,7 @@ jobs:
           $needle = '    void _ReadWriteBarrier(void);'
           $replacement = "#pragma push_macro(`"_ReadWriteBarrier`")`n#undef _ReadWriteBarrier`n    void _ReadWriteBarrier(void);`n#pragma pop_macro(`"_ReadWriteBarrier`")"
           $files = @(
-            'vendor/winfsp-rs/winfsp-sys/winfsp/inc/winfsp/fsctl.h',
+            '../winfsp-rs/winfsp-sys/winfsp/inc/winfsp/fsctl.h',
             'C:\Program Files (x86)\WinFsp\inc\winfsp\fsctl.h'
           )
           foreach ($f in $files) {
