@@ -24,9 +24,9 @@ clap = { version = "4", features = ["derive"] }
 # detect via the FsBackend trait. The skeleton has cross-platform stubs
 # for non-windows hosts so it stays in [dependencies], not the
 # windows-only block.
-winfsp-fs-skeleton = { path = "vendor/winfsp-fs-skeleton", default-features = false }
-am-fs-core = { path = "vendor/rust-fs-core", version = "0.1" }
-am-fs-erofs = { path = "vendor/rust-fs-erofs", version = "0.1" }
+winfsp-fs-skeleton = { path = "../winfsp-fs-skeleton", default-features = false }
+am-fs-core = { path = "../rust-fs-core", version = "0.2" }
+am-fs-erofs = { path = "../rust-fs-erofs", version = "0.1" }
 # `watch` subcommand uses ctrlc on Windows. Pulled in unconditionally
 # (cheap, cross-platform) so the same handler code wires the foreground
 # `watch` and the WinFsp `mount` Ctrl-C path.
