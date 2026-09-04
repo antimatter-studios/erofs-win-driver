@@ -1,5 +1,9 @@
 /target
-Cargo.lock
+# Cargo.lock is COMMITTED. This crate is a binary -- a driver someone
+# installs -- not a library, so the lockfile is the record of what a
+# release was actually built from. Ignoring it meant `--locked` had
+# nothing to check against and a dependency could move under a release
+# without anything saying so.
 *.img
 .history
 .test-env

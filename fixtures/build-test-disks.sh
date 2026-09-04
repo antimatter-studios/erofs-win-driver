@@ -1,10 +1,10 @@
 #!/usr/bin/env bash
 # build-test-disks.sh -- materialise EROFS test images referenced by
-# test-matrix.json into vendor/rust-fs-erofs/test-disks/.
+# test-matrix.json into ../rust-fs-erofs/test-disks/.
 #
 # Test images are build artefacts (not tracked in git). This script
 # synthesises a minimal source tree, then invokes the mkfs_erofs binary
-# from the path-dep'd vendor/rust-fs-erofs crate to produce one or
+# from the path-dep'd ../rust-fs-erofs crate to produce one or
 # more EROFS images.
 #
 # Usage:
@@ -23,7 +23,7 @@ repo_root="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 disks_dir="${repo_root}/../rust-fs-erofs/test-disks"
 
 # Build mkfs_erofs from the vendored sibling project.
-mkfs_root="${repo_root}/vendor/rust-fs-erofs"
+mkfs_root="${repo_root}/../rust-fs-erofs"
 mkfs_bin="${mkfs_root}/target/release/mkfs_erofs"
 
 echo "[build] cargo build --release --bin mkfs_erofs"
