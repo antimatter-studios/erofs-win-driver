@@ -42,9 +42,20 @@ jobs:
     steps:
       - uses: actions/checkout@v4
         with:
-          # Only the third-party winfsp-rs fork is still a submodule,
-          # and it is Windows-only — nothing here needs it.
-          submodules: false
+          # winfsp-rs is needed HERE TOO, despite being Windows-only.
+          # Cargo resolves every path dependency when it parses the
+          # manifest, including ones under
+          # `[target.'cfg(windows)'.dependencies]` that this target will
+          # never build. Without the submodule the run dies before
+          # compiling anything:
+          #
+          #   error: failed to get `winfsp` as a dependency
+          #   Caused by: failed to read vendor/winfsp-rs/winfsp/Cargo.toml
+          #
+          # "It is Windows-only so Linux does not need it" is the
+          # intuition, and it is wrong: cargo needs the manifest to
+          # exist, not the code to compile.
+          submodules: recursive
 
       - name: check out sibling repos
         # The family repos are siblings, not submodules; the refs live
