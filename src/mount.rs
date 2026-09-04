@@ -630,7 +630,7 @@ mod winfsp_adapter {
         DirInfo, DirMarker, FileInfo, FileSecurity, FileSystemContext, ModificationDescriptor,
         OpenFileInfo, VolumeInfo, WideNameInfo,
     };
-    use winfsp::host::{FileSystemHost, VolumeParams};
+    use winfsp::host::{FileSystemHost, FineGuard, VolumeParams};
     use winfsp::Result as FspResult;
     // FILE_FLAGS_AND_ATTRIBUTES from winfsp_sys is the bindgen u32
     // alias the FileSystemContext trait expects; the windows crate's
@@ -1560,7 +1560,17 @@ mod winfsp_adapter {
             params.read_only_volume(true);
         }
 
-        let mut host = FileSystemHost::new(params, ctx)
+        // The guard strategy is named rather than inferred. winfsp-rs
+        // 0.13.0 carries it as a type parameter -- that is what "move
+        // guard strategy into types to prevent potential send/sync
+        // soundness issues" did -- and two impls' methods collide when
+        // it is left open, surfacing as E0034 at the mount() call
+        // rather than here.
+        //
+        // FineGuard is what this driver wants: WinFsp guards namespace
+        // operations with a read-write lock and leaves file I/O
+        // concurrent, so reads on different files do not serialise.
+        let mut host = FileSystemHost::<_, FineGuard>::new(params, ctx)
             .map_err(|e| anyhow!("FileSystemHost::new failed: {e}"))?;
 
         host.mount(mount_point)
