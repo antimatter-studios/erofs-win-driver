@@ -238,7 +238,7 @@ This requires WinFsp installed and runs only on Windows. (The `--ignored` test c
 
 GPL-3.0-or-later — inherited from the WinFsp Rust bindings link line. The CLI subcommands that don't link winfsp (`info`, `ls`, `cat`, `watch`) work cross-platform and could be relicensed if split out, but the single-license declaration keeps the distribution unit simple.
 
-The underlying [rust-fs-erofs](../rust-fs-erofs/) library (crate `am-fs-erofs`) is **MIT** — one-way compatible (MIT flows cleanly into GPL-3 distributions). All transitive dependencies are permissive (MIT / Apache-2 / BSD / Zlib / 0BSD); no GPL/LGPL pulled in. A pre-distribution IP audit confirms the cleanroom posture.
+The underlying [rust-fs-erofs](https://github.com/antimatter-studios/rust-fs-erofs) library (crate `am-fs-erofs`) is **MIT** — one-way compatible (MIT flows cleanly into GPL-3 distributions). All transitive dependencies are permissive (MIT / Apache-2 / BSD / Zlib / 0BSD); no GPL/LGPL pulled in. A pre-distribution IP audit confirms the cleanroom posture.
 
 External tools (`mkfs.erofs`, `fsck.erofs`, `dump.erofs`) are invoked at arm's length via subprocess from `#[ignore]`-gated integration tests in the library only — never linked, never source-copied.
 
