@@ -3,7 +3,7 @@ name = "erofs-win-driver"
 version = "0.1.0"
 edition = "2021"
 # GPL-3.0-or-later because the WinFsp Rust bindings (`winfsp` crate, vendored
-# under vendor/winfsp-rs) are GPL-3.0. The CLI alone (without the `mount`
+# checked out as a sibling at ../winfsp-rs) are GPL-3.0. The CLI alone (without the `mount`
 # feature) does not link winfsp and could be relicensed if ever split out,
 # but to keep the distribution unit single-licensed we declare GPL-3.0
 # here. Our own `am-fs-erofs` library remains MIT — one-way compatible.
@@ -52,22 +52,22 @@ tempfile = "3"
 # the `mount` feature does nothing (the cfg-gated module is empty).
 #
 # Path-depended on the antimatter-studios fork of winfsp-rs (vendored
-# under vendor/winfsp-rs) until our gnullvm-support PR lands upstream
+# checked out as a sibling at ../winfsp-rs) until our gnullvm-support PR lands upstream
 # at SnowflakePowered/winfsp-rs. The patch lifts winfsp-sys/build.rs's
 # MSVC-only gate so the same MSVC-format .lib (consumed via lld-link)
 # works for *-pc-windows-gnullvm Rust toolchains too.
-winfsp = { path = "vendor/winfsp-rs/winfsp", features = ["delayload", "system"], optional = true, default-features = false }
+winfsp = { path = "../winfsp-rs/winfsp", features = ["delayload", "system"], optional = true, default-features = false }
 windows = { version = "0.61", features = [
     "Win32_Foundation",
     "Win32_Storage_FileSystem",
 ], optional = true }
-winfsp-sys = { path = "vendor/winfsp-rs/winfsp-sys", optional = true }
+winfsp-sys = { path = "../winfsp-rs/winfsp-sys", optional = true }
 widestring = { version = "1", optional = true }
 
 [target.'cfg(windows)'.build-dependencies]
 # Only used when the `mount` feature is on; build.rs guards the call.
 # `delayload` implies the `build` feature in winfsp's Cargo.toml.
-winfsp = { path = "vendor/winfsp-rs/winfsp", features = ["delayload"], default-features = false }
+winfsp = { path = "../winfsp-rs/winfsp", features = ["delayload"], default-features = false }
 
 [features]
 default = []
