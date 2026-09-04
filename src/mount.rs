@@ -643,10 +643,6 @@ mod winfsp_adapter {
 
     use super::{Mount, OverlayEntry, OverlayLookup, WriteMode};
 
-    /// Seconds between Windows FILETIME epoch (1601-01-01) and Unix
-    /// epoch (1970-01-01).
-    const FILETIME_EPOCH_OFFSET_SEC: u64 = 11_644_473_600;
-
     /// IO_REPARSE_TAG_SYMLINK — Microsoft public symlink tag. We surface
     /// EROFS symlinks as Windows reparse points so Explorer can render
     /// them (and follow them, with the right privilege). The literal is
@@ -654,25 +650,27 @@ mod winfsp_adapter {
     /// require an extra feature gate.
     const IO_REPARSE_TAG_SYMLINK: u32 = 0xA000_000C;
 
-    /// Convert a unix-epoch-seconds timestamp to a FILETIME (100-ns
-    /// intervals since 1601). Saturating on overflow — EROFS stores
-    /// 64-bit seconds, FILETIME is 64-bit 100-ns ticks; for any
-    /// realistic mtime the multiplication fits comfortably.
-    fn unix_to_filetime(secs: u64, nsec: u32) -> u64 {
-        let secs_part = FILETIME_EPOCH_OFFSET_SEC
-            .saturating_add(secs)
-            .saturating_mul(10_000_000);
-        let nsec_part = (nsec as u64) / 100;
-        secs_part.saturating_add(nsec_part)
+    /// EROFS stores unsigned 64-bit seconds; the shared converter takes
+    /// signed, because a filesystem timestamp can be negative and
+    /// FILETIME represents that fine (its epoch is 1601). The
+    /// conversion is checked rather than cast: `u64::MAX as i64` is
+    /// -1, so a corrupt image would render as 1969 instead of being
+    /// clamped to the far future where it belongs.
+    use winfsp_fs_skeleton::translate::unix_to_filetime;
+
+    /// EROFS seconds, narrowed for the shared converter.
+    fn erofs_seconds(secs: u64) -> i64 {
+        i64::try_from(secs).unwrap_or(i64::MAX)
     }
 
     /// `\foo\bar` (UTF-16) → `/foo/bar` (UTF-8). Empty path becomes "/".
+    ///
+    /// The UTF-16 decode stays here, where the `U16CStr` type is known
+    /// and the failure has to be reported; the path rewriting itself is
+    /// the skeleton's, since every driver did it identically.
     fn winpath_to_unix(name: &U16CStr) -> Result<String> {
         let s = name.to_string().context("path is invalid UTF-16")?;
-        if s.is_empty() {
-            return Ok("/".into());
-        }
-        Ok(s.replace('\\', "/"))
+        Ok(winfsp_fs_skeleton::translate::winpath_to_unix(&s))
     }
 
     /// Translate an EROFS inode into a Windows file-attribute bitmap.
@@ -711,7 +709,7 @@ mod winfsp_adapter {
         // Round allocation up to 4 KiB. EROFS doesn't track on-disk
         // allocation distinct from logical size for our purposes.
         info.allocation_size = (inode.size + 4095) & !4095;
-        let ft = unix_to_filetime(inode.mtime, inode.mtime_nsec);
+        let ft = unix_to_filetime(erofs_seconds(inode.mtime), inode.mtime_nsec);
         info.creation_time = ft;
         info.last_access_time = ft;
         info.last_write_time = ft;
@@ -740,7 +738,7 @@ mod winfsp_adapter {
         info.reparse_tag = 0;
         info.file_size = entry.content().map(|c| c.len() as u64).unwrap_or(0);
         info.allocation_size = (info.file_size + 4095) & !4095;
-        let ft = unix_to_filetime(entry.mtime(), 0);
+        let ft = unix_to_filetime(erofs_seconds(entry.mtime()), 0);
         info.creation_time = ft;
         info.last_access_time = ft;
         info.last_write_time = ft;
