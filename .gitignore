@@ -8,4 +8,9 @@
 .history
 .test-env
 test-diagnostics/
-.claude/
+.claude/# The matrix's images and its per-run copies (scripts/run-matrix.sh).
+/.fixtures/
+/diskimages/
+/erofs-images/
+/test-diagnostics/
+/tmp/

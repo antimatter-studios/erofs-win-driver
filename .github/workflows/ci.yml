@@ -129,7 +129,7 @@ jobs:
             rust-fs-core       "$(pin FS_CORE_URL)" "$(pin FS_CORE_REF)" \
             rust-fs-erofs      "$(pin FS_EROFS_URL)" "$(pin FS_EROFS_REF)" \
             winfsp-fs-skeleton "$(pin SKELETON_URL)" "$(pin SKELETON_REF)" \
-            fs-test-harness    "$(pin HARNESS_URL)" "$(pin HARNESS_REF)" \
+            fs-windows-test-harness "$(pin HARNESS_URL)" "$(pin HARNESS_REF)" \
             winfsp-rs          "$(pin WINFSP_RS_URL)" "$(pin WINFSP_RS_REF)" \
           | while IFS="$(printf '\t')" read -r name url ref; do
               echo "cloning $name at $ref"
@@ -216,3 +216,10 @@ jobs:
       - name: cargo check --features mount,service
         shell: pwsh
         run: cargo check --locked --features mount,service --target x86_64-pc-windows-gnullvm
+
+  # THE MATRIX lives in matrix.yml, so the release can run the same matrix
+  # against the driver its installer installs (#6). Here it runs against a
+  # development build of this commit.
+  matrix:
+    name: matrix
+    uses: ./.github/workflows/matrix.yml

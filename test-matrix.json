@@ -1,13 +1,16 @@
 {
   "_format": "v2",
-  "_doc": "erofs-win-driver matrix. EROFS is read-only natively, so coverage focuses on host-side info/ls/cat probes plus vm-side mount + readback. RW (overlay-sidecar) scenarios are deferred — they need a sidecar emit + replay op shape not present in the shared scripts/win/. Test images are built by fixtures/build-test-disks.sh into ../rust-fs-erofs/test-disks/. Hashes captured against the canonical erofs-basic.img produced by mkfs_erofs over a synthesised source tree.",
+  "_doc": "erofs-win-driver matrix. EROFS is read-only natively, so coverage focuses on host-side info/ls/cat probes plus vm-side mount + readback. RW (overlay-sidecar) scenarios are deferred: they need a sidecar emit + replay op shape not present in the shared scripts. Every scenario starts by building its image: scripts/build-fixtures.sh makes erofs-basic.img with the reference mkfs.erofs (erofs-utils) on Linux, and scripts/build-erofs-image.sh gives each scenario its own copy. Hashes are of the fixed file contents that script writes.",
   "scenarios": {
     "basic-info-volume": {
       "status": "pending",
       "image": "erofs-basic.img",
       "_attempts": [],
-      "_notes": "Volume-level smoke. Asserts block_size + volume_name substrings so superblock decoding regressions trip a verdict. Capture: ./target/release/erofs info ../rust-fs-erofs/test-disks/erofs-basic.img",
+      "_notes": "Volume-level smoke. Asserts block_size + volume_name substrings so superblock decoding regressions trip a verdict. Capture: ./target/release/erofs info erofs-basic.img",
       "recipe": [
+        {
+          "op": "build-erofs-image"
+        },
         {
           "op": "verify-info",
           "expect_args": "'--expect-stdout-contains' 'block size       4096'"
@@ -24,6 +27,9 @@
       "_attempts": [],
       "_notes": "Root-dir listing. Validates dirent decoding + name-set against the canonical erofs-basic.img source tree (test.txt, subdir/).",
       "recipe": [
+        {
+          "op": "build-erofs-image"
+        },
         {
           "op": "verify-ls",
           "path": "/",
@@ -43,6 +49,9 @@
       "_notes": "Subdirectory listing. Validates non-root dirent traversal.",
       "recipe": [
         {
+          "op": "build-erofs-image"
+        },
+        {
           "op": "verify-ls",
           "path": "/subdir",
           "expect_args": "'--expect-name' '.' '--expect-name' '..' '--expect-name' 'nested.txt'"
@@ -55,6 +64,9 @@
       "_attempts": [],
       "_notes": "Read content matches sha256 on /test.txt. Capture: printf 'hello from erofs\\n' | shasum -a 256 -> 68f426e9...",
       "recipe": [
+        {
+          "op": "build-erofs-image"
+        },
         {
           "op": "verify-cat",
           "path": "/test.txt",
@@ -69,6 +81,9 @@
       "_notes": "Read content matches sha256 on /subdir/nested.txt. Catches subdir-file extent decoding.",
       "recipe": [
         {
+          "op": "build-erofs-image"
+        },
+        {
           "op": "verify-cat",
           "path": "/subdir/nested.txt",
           "expect_args": "'--expect-size' '7' '--expect-sha256' '370a8c04b8a65bb4494275eec227f1b694db04c76da6b0b8ae88ed1ab19790a3'"
@@ -82,8 +97,11 @@
       "_notes": "End-to-end vm-side mount + listing via WinFsp drive letter. Self-contained mount-do-unmount per win-ls-via-mount step (cross-step persistent mounts don't survive single-SSH-per-step dispatch).",
       "recipe": [
         {
+          "op": "build-erofs-image"
+        },
+        {
           "op": "ship-to-vm",
-          "src": "{image_dir}/erofs-basic.img",
+          "src": "{image_dir}/{run_id}/erofs-basic.img",
           "dest": "{vm.workdir}/erofs-basic.img"
         },
         {
@@ -103,8 +121,11 @@
       "_notes": "End-to-end vm-side mount + read of /test.txt via WinFsp drive letter. Validates the full WinFsp -> rust-fs-erofs read path on Windows.",
       "recipe": [
         {
+          "op": "build-erofs-image"
+        },
+        {
           "op": "ship-to-vm",
-          "src": "{image_dir}/erofs-basic.img",
+          "src": "{image_dir}/{run_id}/erofs-basic.img",
           "dest": "{vm.workdir}/erofs-basic.img"
         },
         {

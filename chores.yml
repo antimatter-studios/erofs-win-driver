@@ -7,7 +7,7 @@ chore_min_version: 0.6.0
 # different mechanisms. Getting that split right is the whole point:
 #
 #   FAMILY REPOS -> siblings, checked out next to this one.
-#     am-fs-core, am-fs-erofs, winfsp-fs-skeleton, fs-test-harness.
+#     am-fs-core, am-fs-erofs, winfsp-fs-skeleton, fs-windows-test-harness.
 #     These release together and are expected to agree on a version at
 #     any given moment. A submodule pins a copy PER CONSUMER, so the
 #     same crate ends up on disk several times at several versions with
@@ -58,8 +58,10 @@ vars:
   # that target.
   WINFSP_RS_URL: https://github.com/antimatter-studios/winfsp-rs.git
   WINFSP_RS_REF: 59ab48bca2a67c95d4eba640343b6b80b87bb6ea
-  HARNESS_URL: https://github.com/antimatter-studios/fs-test-harness.git
-  HARNESS_REF: v3.11.0
+  # fs-windows-test-harness, which fs-test-harness became at v4.0.0: the
+  # matrix runs through it, in CI as on a developer's Windows VM (#6).
+  HARNESS_URL: https://github.com/antimatter-studios/fs-windows-test-harness.git
+  HARNESS_REF: v4.3.1
 
 tasks:
   siblings:
@@ -76,7 +78,7 @@ tasks:
           rust-fs-core       '{{.FS_CORE_URL}}' '{{.FS_CORE_REF}}' \
           rust-fs-erofs      '{{.FS_EROFS_URL}}' '{{.FS_EROFS_REF}}' \
           winfsp-fs-skeleton '{{.SKELETON_URL}}' '{{.SKELETON_REF}}' \
-          fs-test-harness    '{{.HARNESS_URL}}' '{{.HARNESS_REF}}' \
+          fs-windows-test-harness '{{.HARNESS_URL}}' '{{.HARNESS_REF}}' \
           winfsp-rs          '{{.WINFSP_RS_URL}}' '{{.WINFSP_RS_REF}}' \
         | while IFS="$(printf '\t')" read -r name url ref; do
             dir="../$name"
@@ -126,7 +128,7 @@ tasks:
           rust-fs-core       '{{.FS_CORE_REF}}' \
           rust-fs-erofs      '{{.FS_EROFS_REF}}' \
           winfsp-fs-skeleton '{{.SKELETON_REF}}' \
-          fs-test-harness    '{{.HARNESS_REF}}' \
+          fs-windows-test-harness '{{.HARNESS_REF}}' \
         | while IFS="$(printf '\t')" read -r name ref; do
             dir="../$name"
             if [ ! -d "$dir/.git" ]; then
