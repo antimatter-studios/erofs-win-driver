@@ -7,7 +7,7 @@ chore_min_version: 0.6.0
 # different mechanisms. Getting that split right is the whole point:
 #
 #   FAMILY REPOS -> siblings, checked out next to this one.
-#     am-fs-core, am-fs-erofs, winfsp-fs-skeleton, fs-windows-test-harness.
+#     rust-fs-core, rust-fs-erofs, winfsp-fs-skeleton, fs-windows-test-harness.
 #     These release together and are expected to agree on a version at
 #     any given moment. A submodule pins a copy PER CONSUMER, so the
 #     same crate ends up on disk several times at several versions with
@@ -34,23 +34,21 @@ vars:
   # The family pins. One place, read by both `chore siblings` and the
   # CI workflow -- CI parses them out of this file rather than
   # restating them, so bumping one is still a one-line edit.
-  # URL as well as ref: the family is NOT all in one org --
-  # rust-fs-ext4 and rust-fs-ntfs live under christhomas/ while the
-  # rest are under antimatter-studios/. Anything that reconstructs a
-  # URL from the repo name is wrong for exactly two of them, and git
-  # answers a repo it cannot see with an interactive credential
-  # prompt rather than a 404, so it reads as an auth failure.
+  # URL as well as ref: a URL rebuilt from a repo name is wrong the
+  # moment a repository moves, and git answers a repo it cannot see with
+  # an interactive credential prompt rather than a 404, so it reads as an
+  # auth failure.
   FS_CORE_URL: https://github.com/antimatter-studios/rust-fs-core.git
-  FS_CORE_REF: v0.2.4
+  FS_CORE_REF: v0.3.3
   FS_EROFS_URL: https://github.com/antimatter-studios/rust-fs-erofs.git
-  FS_EROFS_REF: v0.1.4
+  FS_EROFS_REF: v0.4.0
   # Pinned to the tag, not to `main`. A floating ref was one of the two
   # things wrong with the submodule setup this file replaces, and
   # swapping a floating submodule for a floating sibling would have
   # fixed nothing. Bump this when the skeleton next releases -- its
   # `translate` and `reader` modules are what this driver will move to.
   SKELETON_URL: https://github.com/antimatter-studios/winfsp-fs-skeleton.git
-  SKELETON_REF: v0.2.1
+  SKELETON_REF: v0.2.2
   # Pinned to a COMMIT, not a branch. This is a fork of a third-party
   # crate, so there is no release cadence of ours to track, and upstream
   # 0.13.0 does not compile for *-pc-windows-gnullvm -- it declares the
