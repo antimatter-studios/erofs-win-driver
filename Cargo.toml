@@ -6,7 +6,7 @@ edition = "2021"
 # checked out as a sibling at ../winfsp-rs) are GPL-3.0. The CLI alone (without the `mount`
 # feature) does not link winfsp and could be relicensed if ever split out,
 # but to keep the distribution unit single-licensed we declare GPL-3.0
-# here. Our own `am-fs-erofs` library remains MIT — one-way compatible.
+# here. Our own `rust-fs-erofs` library remains MIT — one-way compatible.
 license = "GPL-3.0-or-later"
 description = "Read-only EROFS (Enhanced Read-Only File System) driver for Windows, built on WinFsp."
 repository = "https://github.com/antimatter-studios/erofs-win-driver"
@@ -25,8 +25,8 @@ clap = { version = "4", features = ["derive"] }
 # for non-windows hosts so it stays in [dependencies], not the
 # windows-only block.
 winfsp-fs-skeleton = { path = "../winfsp-fs-skeleton", default-features = false }
-am-fs-core = { path = "../rust-fs-core", version = "0.2" }
-am-fs-erofs = { path = "../rust-fs-erofs", version = "0.1" }
+rust-fs-core = { path = "../rust-fs-core", version = "0.3.3" }
+rust-fs-erofs = { path = "../rust-fs-erofs", version = "0.4" }
 # `watch` subcommand uses ctrlc on Windows. Pulled in unconditionally
 # (cheap, cross-platform) so the same handler code wires the foreground
 # `watch` and the WinFsp `mount` Ctrl-C path.

@@ -3,7 +3,7 @@
 //! `Mount` opens an EROFS image — either a regular file path or, on
 //! Windows, a raw device like `\\.\PhysicalDriveN` — optionally seeking
 //! into a specific partition's byte range. The opened
-//! `am_fs_erofs::Filesystem` is then exposed to WinFsp via the
+//! `fs_erofs::Filesystem` is then exposed to WinFsp via the
 //! `FileSystemContext` trait.
 //!
 //! Read-only by design: EROFS is read-only at the format level, so every
@@ -106,7 +106,7 @@ pub enum WriteMode {
     ReadOnly,
 }
 
-/// RAII handle around an opened `am_fs_erofs::Filesystem`.
+/// RAII handle around an opened `fs_erofs::Filesystem`.
 ///
 /// `pub(crate)` fields so the WinFsp adapter (defined further down) and
 /// the smoke tests can both reach in for the underlying `Filesystem`
@@ -581,7 +581,7 @@ fn partition_hint(image: &Path) -> String {
 #[cfg(all(windows, feature = "mount"))]
 mod winfsp_adapter {
     //! Bridge between WinFsp's `FileSystemContext` and a read-write
-    //! overlay layered atop `am_fs_erofs::Filesystem`.
+    //! overlay layered atop `fs_erofs::Filesystem`.
     //!
     //! Reads consult the in-memory overlay first; on Miss they fall
     //! through to the read-only EROFS underlay. Writes always land in
@@ -610,7 +610,7 @@ mod winfsp_adapter {
     //!
     //! License posture: this module is the only place that links against
     //! the GPL-3 winfsp-rs crate. The rest of erofs-win-driver and all
-    //! of `am-fs-erofs` (MIT) flow upward into the GPL-3 unit cleanly
+    //! of `rust-fs-erofs` (MIT) flow upward into the GPL-3 unit cleanly
     //! under the GPL-3's one-way compatibility rule.
 
     use anyhow::{anyhow, Context, Result};
@@ -1639,7 +1639,7 @@ mod tests {
     //!
     //! What we *can* test cross-platform: that `Mount::open` works on
     //! an EROFS image (built inline byte-for-byte from the spec, so
-    //! the test stays decoupled from the `am_fs_erofs::mkfs` builder)
+    //! the test stays decoupled from the `fs_erofs::mkfs` builder)
     //! and that the resulting `Filesystem` exposes the basic info needed
     //! to populate `VolumeInfo` and a directory listing.
 
@@ -1660,10 +1660,10 @@ mod tests {
     ///   - regular file at NID 1 ("hello.txt", FLAT_PLAIN, file data at block 2)
     ///
     /// Hand-rolled here so the smoke tests don't depend on the
-    /// `am_fs_erofs::mkfs` builder, which is mid-refactor in this
+    /// `fs_erofs::mkfs` builder, which is mid-refactor in this
     /// workspace and not always compilable. Field offsets / magic
     /// constants come from the `erofs_fs.h` spec (also documented in
-    /// `am_fs_erofs::superblock`, `inode`, and `dir`).
+    /// `fs_erofs::superblock`, `inode`, and `dir`).
     fn build_simple_image() -> Vec<u8> {
         const BS: usize = 4096;
         const SUPER_OFFSET: usize = 1024;

@@ -24,22 +24,6 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "683d7910e743518b0e34f1186f92494becacb047c7b6bf616c96772180fef923"
 
 [[package]]
-name = "am-fs-core"
-version = "0.2.4"
-
-[[package]]
-name = "am-fs-erofs"
-version = "0.1.4"
-dependencies = [
- "am-fs-core",
- "crc32c",
- "flate2",
- "lru",
- "lz4_flex",
- "lzma-rs",
-]
-
-[[package]]
 name = "anstream"
 version = "1.0.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -292,11 +276,11 @@ checksum = "877a4ace8713b0bcf2a4e7eec82529c029f1d0619886d18145fea96c3ffe5c0f"
 name = "erofs-win-driver"
 version = "0.1.0"
 dependencies = [
- "am-fs-core",
- "am-fs-erofs",
  "anyhow",
  "clap",
  "ctrlc",
+ "rust-fs-core",
+ "rust-fs-erofs",
  "serde",
  "serde_json",
  "tempfile",
@@ -661,6 +645,23 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "dc897dd8d9e8bd1ed8cdad82b5966c3e0ecae09fb1907d58efaa013543185d0a"
 
 [[package]]
+name = "rust-fs-core"
+version = "0.3.3"
+
+[[package]]
+name = "rust-fs-erofs"
+version = "0.4.0"
+dependencies = [
+ "crc32c",
+ "flate2",
+ "lru",
+ "lz4_flex",
+ "lzma-rs",
+ "rust-fs-core",
+ "ruzstd",
+]
+
+[[package]]
 name = "rustc-hash"
 version = "2.1.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -686,6 +687,15 @@ dependencies = [
  "libc",
  "linux-raw-sys",
  "windows-sys 0.61.2",
+]
+
+[[package]]
+name = "ruzstd"
+version = "0.8.3"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "a7c1c839d570d835527c9a5e4db7cb2198683a988cb9d7293fc8674e6bd58fc8"
+dependencies = [
+ "twox-hash",
 ]
 
 [[package]]
@@ -816,6 +826,12 @@ dependencies = [
  "quote",
  "syn",
 ]
+
+[[package]]
+name = "twox-hash"
+version = "2.1.5"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "86a801b3cea342a06d468c8710662aa29e5e05e4f5c0d62f00bbb7f2ad7941c2"
 
 [[package]]
 name = "unicode-ident"
@@ -1148,7 +1164,7 @@ dependencies = [
 
 [[package]]
 name = "winfsp-fs-skeleton"
-version = "0.2.1"
+version = "0.2.2"
 dependencies = [
  "anyhow",
  "ctrlc",
