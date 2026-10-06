@@ -39,7 +39,7 @@ vars:
   # an interactive credential prompt rather than a 404, so it reads as an
   # auth failure.
   FS_CORE_URL: https://github.com/antimatter-studios/rust-fs-core.git
-  FS_CORE_REF: v0.3.3
+  FS_CORE_REF: v0.3.4
   FS_EROFS_URL: https://github.com/antimatter-studios/rust-fs-erofs.git
   FS_EROFS_REF: v0.4.0
   # Pinned to the tag, not to `main`. A floating ref was one of the two
