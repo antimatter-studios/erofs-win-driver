@@ -468,10 +468,13 @@ pub fn rebuild_image(fs: &Filesystem, overlay: &Overlay, out_path: &Path) -> Res
         }
 
         // Underlay path. Look up the inode; absent → return None
-        // (treated as a non-existent path).
+        // (treated as a non-existent path). Any other failure fails the
+        // rebuild: leaving out what could not be read would write an
+        // image without it and report success.
         let inode = match fs.lookup_path(path) {
             Ok(i) => i,
-            Err(_) => return Ok(None),
+            Err(fs_erofs::Error::NotFound) => return Ok(None),
+            Err(e) => return Err(anyhow!("read underlay {path}: {e}")),
         };
         if inode.is_dir() {
             // Merge underlay children with overlay entries.
@@ -479,24 +482,25 @@ pub fn rebuild_image(fs: &Filesystem, overlay: &Overlay, out_path: &Path) -> Res
             // Underlay-listed children first; overlay tombstones drop
             // them, overlay entries replace them via the recursion.
             let mut seen: std::collections::BTreeSet<String> = std::collections::BTreeSet::new();
-            if let Ok(children) = fs.read_dir(&inode) {
-                for child in children {
-                    if child.name == b"." || child.name == b".." {
-                        continue;
-                    }
-                    let name = match std::str::from_utf8(&child.name) {
-                        Ok(s) => s.to_string(),
-                        Err(_) => continue,
-                    };
-                    let child_path = if path == "/" {
-                        format!("/{name}")
-                    } else {
-                        format!("{path}/{name}")
-                    };
-                    seen.insert(name.clone());
-                    if let Some(node) = build_node(fs, overlay, &child_path)? {
-                        entries.insert(name, node);
-                    }
+            let children = fs
+                .read_dir(&inode)
+                .map_err(|e| anyhow!("list underlay directory {path}: {e}"))?;
+            for child in children {
+                if child.name == b"." || child.name == b".." {
+                    continue;
+                }
+                let name = match std::str::from_utf8(&child.name) {
+                    Ok(s) => s.to_string(),
+                    Err(_) => continue,
+                };
+                let child_path = if path == "/" {
+                    format!("/{name}")
+                } else {
+                    format!("{path}/{name}")
+                };
+                seen.insert(name.clone());
+                if let Some(node) = build_node(fs, overlay, &child_path)? {
+                    entries.insert(name, node);
                 }
             }
             // Pure-overlay creations under this dir that the underlay
@@ -576,14 +580,24 @@ pub mod ntstatus {
 /// The NTSTATUS, as its raw value, that a reader error is returned to
 /// Windows as.
 ///
-/// Most lookup-style failures collapse to `STATUS_OBJECT_NAME_NOT_FOUND`
-/// -- Explorer and consumer apps treat that uniformly. Everything else
-/// becomes `STATUS_INVALID_DEVICE_REQUEST`, so it surfaces without being
-/// confused with "no such file".
+/// - Lookup-style failures collapse to `STATUS_OBJECT_NAME_NOT_FOUND`
+///   -- Explorer and consumer apps treat that uniformly.
+/// - A read the device refused is `STATUS_IO_DEVICE_ERROR`, so Windows
+///   says the volume is misbehaving rather than showing an empty folder.
+/// - Metadata that does not describe a valid image -- a bad superblock,
+///   inode, directory block or xattr area -- is
+///   `STATUS_FILE_CORRUPT_ERROR`. A bad directory block is corruption,
+///   not absence, so it is no longer "not found".
+/// - Everything else becomes `STATUS_INVALID_DEVICE_REQUEST`, so it
+///   surfaces without being confused with "no such file".
 pub fn ntstatus_for(err: &fs_erofs::Error) -> i32 {
     use fs_erofs::Error as E;
     match err {
-        E::NotFound | E::NotADirectory | E::BadDirent(_) => ntstatus::OBJECT_NAME_NOT_FOUND,
+        E::NotFound | E::NotADirectory => ntstatus::OBJECT_NAME_NOT_FOUND,
+        E::Block(_) => ntstatus::IO_DEVICE_ERROR,
+        E::NotErofs | E::BadSuperblock(_) | E::BadInode(_) | E::BadDirent(_) | E::BadXattr(_) => {
+            ntstatus::FILE_CORRUPT_ERROR
+        }
         _ => ntstatus::INVALID_DEVICE_REQUEST,
     }
 }
@@ -594,6 +608,14 @@ pub fn ntstatus_for(err: &fs_erofs::Error) -> i32 {
 ///
 /// A name that is not UTF-8 is left out too: Windows cannot be handed
 /// it.
+///
+/// # Errors
+///
+/// Any failure to read the directory, or to read one of its children's
+/// inodes, fails the whole listing. Reporting what could be read instead
+/// would show Windows an empty or a short folder, and an empty folder is
+/// the one answer a user cannot tell from a correct one: it looks like
+/// the files are gone.
 pub fn underlay_children(
     fs: &Filesystem,
     overlay: &Overlay,
@@ -601,28 +623,24 @@ pub fn underlay_children(
     dir_path: &str,
 ) -> fs_erofs::Result<Vec<(String, fs_erofs::Inode)>> {
     let mut pairs = Vec::new();
-    if let Ok(children) = fs.read_dir(dir) {
-        for e in children {
-            if e.name == b"." || e.name == b".." {
-                continue;
-            }
-            let name = match std::str::from_utf8(&e.name) {
-                Ok(s) => s.to_string(),
-                Err(_) => continue,
-            };
-            let child_path = if dir_path == "/" {
-                format!("/{name}")
-            } else {
-                format!("{dir_path}/{name}")
-            };
-            // Tombstoned: skip.
-            if matches!(overlay.lookup(&child_path), OverlayLookup::Deleted) {
-                continue;
-            }
-            if let Ok(child) = fs.read_inode(e.nid) {
-                pairs.push((name, child));
-            }
+    for e in fs.read_dir(dir)? {
+        if e.name == b"." || e.name == b".." {
+            continue;
         }
+        let name = match std::str::from_utf8(&e.name) {
+            Ok(s) => s.to_string(),
+            Err(_) => continue,
+        };
+        let child_path = if dir_path == "/" {
+            format!("/{name}")
+        } else {
+            format!("{dir_path}/{name}")
+        };
+        // Tombstoned: skip.
+        if matches!(overlay.lookup(&child_path), OverlayLookup::Deleted) {
+            continue;
+        }
+        pairs.push((name, fs.read_inode(e.nid)?));
     }
     Ok(pairs)
 }
