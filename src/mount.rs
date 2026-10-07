@@ -422,7 +422,7 @@ fn write_sidecar(_overlay: &Overlay, path: &Path) -> Result<()> {
 /// `out_path`. The original underlay image is untouched. Block size is
 /// inherited from the underlay's superblock so the rebuilt image keeps
 /// the same on-disk geometry.
-fn rebuild_image(fs: &Filesystem, overlay: &Overlay, out_path: &Path) -> Result<()> {
+pub fn rebuild_image(fs: &Filesystem, overlay: &Overlay, out_path: &Path) -> Result<()> {
     use fs_erofs::mkfs::{build_image, Node, NodeMeta, DEFAULT_DIR_MODE, DEFAULT_FILE_MODE};
     use std::collections::BTreeMap;
 
@@ -549,6 +549,82 @@ fn rebuild_image(fs: &Filesystem, overlay: &Overlay, out_path: &Path) -> Result<
     std::fs::write(out_path, bytes)
         .with_context(|| format!("write rebuilt image to {}", out_path.display()))?;
     Ok(())
+}
+
+// ---------------------------------------------------------------------------
+// Directory listing and error mapping. Outside the WinFsp adapter so both
+// are tested on every host; the adapter calls them.
+// ---------------------------------------------------------------------------
+
+/// Raw NTSTATUS values a reader error is reported to Windows as.
+///
+/// Spelled out here rather than taken from the `windows` crate so the
+/// mapping compiles, and is tested, on every host. The WinFsp adapter
+/// asserts at compile time that each one equals the `windows` crate's
+/// constant of the same name.
+pub mod ntstatus {
+    /// `STATUS_OBJECT_NAME_NOT_FOUND`.
+    pub const OBJECT_NAME_NOT_FOUND: i32 = 0xC000_0034_u32 as i32;
+    /// `STATUS_INVALID_DEVICE_REQUEST`.
+    pub const INVALID_DEVICE_REQUEST: i32 = 0xC000_0010_u32 as i32;
+    /// `STATUS_IO_DEVICE_ERROR`: the device could not complete a read.
+    pub const IO_DEVICE_ERROR: i32 = 0xC000_0185_u32 as i32;
+    /// `STATUS_FILE_CORRUPT_ERROR`.
+    pub const FILE_CORRUPT_ERROR: i32 = 0xC000_0102_u32 as i32;
+}
+
+/// The NTSTATUS, as its raw value, that a reader error is returned to
+/// Windows as.
+///
+/// Most lookup-style failures collapse to `STATUS_OBJECT_NAME_NOT_FOUND`
+/// -- Explorer and consumer apps treat that uniformly. Everything else
+/// becomes `STATUS_INVALID_DEVICE_REQUEST`, so it surfaces without being
+/// confused with "no such file".
+pub fn ntstatus_for(err: &fs_erofs::Error) -> i32 {
+    use fs_erofs::Error as E;
+    match err {
+        E::NotFound | E::NotADirectory | E::BadDirent(_) => ntstatus::OBJECT_NAME_NOT_FOUND,
+        _ => ntstatus::INVALID_DEVICE_REQUEST,
+    }
+}
+
+/// The underlay's children of the directory `dir`, at `dir_path`, as
+/// the WinFsp `read_directory` callback lists them: `.` and `..` left
+/// out, and any name the overlay has tombstoned left out.
+///
+/// A name that is not UTF-8 is left out too: Windows cannot be handed
+/// it.
+pub fn underlay_children(
+    fs: &Filesystem,
+    overlay: &Overlay,
+    dir: &fs_erofs::Inode,
+    dir_path: &str,
+) -> fs_erofs::Result<Vec<(String, fs_erofs::Inode)>> {
+    let mut pairs = Vec::new();
+    if let Ok(children) = fs.read_dir(dir) {
+        for e in children {
+            if e.name == b"." || e.name == b".." {
+                continue;
+            }
+            let name = match std::str::from_utf8(&e.name) {
+                Ok(s) => s.to_string(),
+                Err(_) => continue,
+            };
+            let child_path = if dir_path == "/" {
+                format!("/{name}")
+            } else {
+                format!("{dir_path}/{name}")
+            };
+            // Tombstoned: skip.
+            if matches!(overlay.lookup(&child_path), OverlayLookup::Deleted) {
+                continue;
+            }
+            if let Ok(child) = fs.read_inode(e.nid) {
+                pairs.push((name, child));
+            }
+        }
+    }
+    Ok(pairs)
 }
 
 /// Best-effort hint shown when a direct mount fails on what looks like
@@ -754,18 +830,22 @@ mod winfsp_adapter {
     }
 
     /// Map an `fs_erofs::Error` to an NTSTATUS suitable for returning
-    /// from a WinFsp callback. Most lookup-style failures collapse to
-    /// `STATUS_OBJECT_NAME_NOT_FOUND` — Explorer / consumer apps treat
-    /// that uniformly. Disk-IO and format errors become
-    /// `STATUS_INVALID_DEVICE_REQUEST` so they surface but don't get
-    /// confused with "no such file."
+    /// from a WinFsp callback. The mapping itself is
+    /// [`super::ntstatus_for`], outside this module so it is tested on
+    /// every host.
     fn err_to_status(err: fs_erofs::Error) -> windows::Win32::Foundation::NTSTATUS {
-        use fs_erofs::Error as E;
-        match err {
-            E::NotFound | E::NotADirectory | E::BadDirent(_) => STATUS_OBJECT_NAME_NOT_FOUND,
-            _ => STATUS_INVALID_DEVICE_REQUEST,
-        }
+        windows::Win32::Foundation::NTSTATUS(super::ntstatus_for(&err))
     }
+
+    // The raw values `ntstatus_for` returns are the `windows` crate's
+    // constants, checked where both are in scope.
+    const _: () = {
+        use windows::Win32::Foundation::{STATUS_FILE_CORRUPT_ERROR, STATUS_IO_DEVICE_ERROR};
+        assert!(STATUS_OBJECT_NAME_NOT_FOUND.0 == super::ntstatus::OBJECT_NAME_NOT_FOUND);
+        assert!(STATUS_INVALID_DEVICE_REQUEST.0 == super::ntstatus::INVALID_DEVICE_REQUEST);
+        assert!(STATUS_IO_DEVICE_ERROR.0 == super::ntstatus::IO_DEVICE_ERROR);
+        assert!(STATUS_FILE_CORRUPT_ERROR.0 == super::ntstatus::FILE_CORRUPT_ERROR);
+    };
 
     /// Look up a path in the wrapped EROFS volume, mapping any failure
     /// to an NTSTATUS the WinFsp callback can return directly.
@@ -1061,35 +1141,16 @@ mod winfsp_adapter {
 
             // 1. Build the underlay child set.
             let underlay_inode = context.inode.lock().unwrap().clone();
-            let mut underlay_pairs: Vec<(String, Inode)> = Vec::new();
-            if let Some(inode) = underlay_inode.as_ref() {
-                if let Ok(children) = self.fs().read_dir(inode) {
-                    for e in children {
-                        if e.name == b"." || e.name == b".." {
-                            continue;
-                        }
-                        let name = match std::str::from_utf8(&e.name) {
-                            Ok(s) => s.to_string(),
-                            Err(_) => continue,
-                        };
-                        let child_path = if context.unix_path == "/" {
-                            format!("/{name}")
-                        } else {
-                            format!("{}/{}", context.unix_path, name)
-                        };
-                        // Tombstoned: skip.
-                        if matches!(
-                            self.mount.overlay.lookup(&child_path),
-                            OverlayLookup::Deleted
-                        ) {
-                            continue;
-                        }
-                        if let Ok(child) = self.fs().read_inode(e.nid) {
-                            underlay_pairs.push((name, child));
-                        }
-                    }
-                }
-            }
+            let mut underlay_pairs: Vec<(String, Inode)> = match underlay_inode.as_ref() {
+                Some(inode) => super::underlay_children(
+                    self.fs(),
+                    &self.mount.overlay,
+                    inode,
+                    &context.unix_path,
+                )
+                .map_err(err_to_status)?,
+                None => Vec::new(),
+            };
 
             // 2. Overlay-only entries under this dir.
             let mut overlay_pairs: Vec<(String, OverlayEntry)> = Vec::new();
