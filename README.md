@@ -99,7 +99,7 @@ Three dismount policies decide what happens to the staged writes:
 |---|---|---|
 | `--scratch-discard` (default) | Overlay is dropped. The image on disk is unchanged. | Read-only browsing of an image you don't want to modify |
 | `--scratch-sidecar <PATH>` | Overlay state serialized to a JSON file at `<PATH>` on dismount | Audit what was edited; replay later |
-| `--scratch-rebuild <PATH>` | Walk the merged tree (overlay + underlay), emit a new EROFS image at `<PATH>` via the bundled `mkfs_erofs` library function | Commit changes to a new image |
+| `--scratch-rebuild <PATH>` | Walk the merged tree (overlay + underlay), emit a new EROFS image at `<PATH>` via the bundled `mkfs_erofs` library function. If any part of the underlay cannot be read, the rebuild fails and names the path rather than writing an image without it | Commit changes to a new image |
 | `--ro` | Reject all writes at the WinFsp callback layer with `STATUS_MEDIA_WRITE_PROTECTED` | Force read-only even on the "default" R/W mount |
 
 **Caveat: the overlay is in-memory.** Large writes can OOM. There is no streaming-to-disk overflow path. If you intend to write multi-GB into a mounted volume, use `--scratch-rebuild` and ensure host RAM is proportional to the changes.
