@@ -7,7 +7,7 @@ PublisherUrl: https://github.com/AntimatterStudios
 PublisherSupportUrl: https://github.com/AntimatterStudios/erofs-win-driver/issues
 PackageName: erofs-win-driver
 PackageUrl: https://github.com/AntimatterStudios/erofs-win-driver
-License: GPL-3.0-only
+License: GPL-3.0-or-later
 LicenseUrl: https://www.gnu.org/licenses/gpl-3.0.html
 ShortDescription: Browse and auto-mount erofs disks on Windows via WinFsp.
 Description: |

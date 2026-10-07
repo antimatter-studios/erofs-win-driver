@@ -7,6 +7,12 @@ notes are that section (rust-fs-core's `release-notes`).
 
 ## [Unreleased]
 
+### Changed
+
+- **The winget manifest declares GPL-3.0-or-later**, the licence
+  `Cargo.toml` and the README already state, instead of GPL-3.0 only.
+
+
 ### Added
 
 - Erofs probe, mount, and overlay backend.
