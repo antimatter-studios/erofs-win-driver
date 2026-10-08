@@ -21,6 +21,7 @@ notes are that section (rust-fs-core's `release-notes`).
 
 ### Fixed
 
+- **The WinFsp install fails its own step when nothing was installed.** `choco install winfsp` passes having installed nothing when the Chocolatey feed cannot serve the package, and the build then failed later in winfsp-sys; `scripts/install-winfsp.ps1` retries four times and fails unless WinFsp's headers are on disk (#16).
 - **A directory the reader cannot list is an I/O error, never an empty folder.** A directory whose contents, or one of whose children, could not be read was shown to Windows as empty or short; the listing now fails with `STATUS_IO_DEVICE_ERROR`, or `STATUS_FILE_CORRUPT_ERROR` for corrupt metadata (including a bad directory block, which was reported as "not found").
 - **A rebuild that cannot read the underlay fails.** `--scratch-rebuild` left out any subtree it could not read and reported success; it now fails and names the path.
 - **A transient HTTP 5xx from the chore release download no longer fails a CI job.** Every chore download in the workflows retries up to five times on any error.
