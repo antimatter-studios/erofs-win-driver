@@ -646,11 +646,11 @@ checksum = "dc897dd8d9e8bd1ed8cdad82b5966c3e0ecae09fb1907d58efaa013543185d0a"
 
 [[package]]
 name = "rust-fs-core"
-version = "0.3.12"
+version = "0.3.17"
 
 [[package]]
 name = "rust-fs-erofs"
-version = "0.4.0"
+version = "0.5.0"
 dependencies = [
  "crc32c",
  "flate2",
@@ -1150,7 +1150,7 @@ checksum = "589f6da84c646204747d1270a2a5661ea66ed1cced2631d546fdfb155959f9ec"
 
 [[package]]
 name = "winfsp"
-version = "0.13.1+winfsp-2.1"
+version = "0.13.2+winfsp-2.1"
 dependencies = [
  "bytemuck",
  "parking_lot",

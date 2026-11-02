@@ -39,9 +39,9 @@ vars:
   # an interactive credential prompt rather than a 404, so it reads as an
   # auth failure.
   FS_CORE_URL: https://github.com/antimatter-studios/rust-fs-core.git
-  FS_CORE_REF: v0.3.12
+  FS_CORE_REF: v0.3.17
   FS_EROFS_URL: https://github.com/antimatter-studios/rust-fs-erofs.git
-  FS_EROFS_REF: v0.4.0
+  FS_EROFS_REF: v0.5.0
   # Pinned to the tag, not to `main`. A floating ref was one of the two
   # things wrong with the submodule setup this file replaces, and
   # swapping a floating submodule for a floating sibling would have
@@ -49,13 +49,12 @@ vars:
   # `translate` and `reader` modules are what this driver will move to.
   SKELETON_URL: https://github.com/antimatter-studios/winfsp-fs-skeleton.git
   SKELETON_REF: v0.2.2
-  # Pinned to a COMMIT, not a branch. This is a fork of a third-party
-  # crate, so there is no release cadence of ours to track, and upstream
-  # 0.13.0 does not compile for *-pc-windows-gnullvm -- it declares the
-  # guard-strategy constant signed while bindgen emits it unsigned for
-  # that target.
+  # Pinned to a COMMIT, not a branch: upstream's 0.13.2, which our fork
+  # now matches. It holds the gnullvm guard-strategy fix, and stops set_name
+  # writing a NUL into directory entries, which made Explorer list a directory
+  # for ever.
   WINFSP_RS_URL: https://github.com/antimatter-studios/winfsp-rs.git
-  WINFSP_RS_REF: 0e94163771bcfd3ec1265d3ab35eb2a871136940
+  WINFSP_RS_REF: 0cdd86a6f1ecd38c89da6ccf3fe2fc3312e11d8f
   # fs-windows-test-harness, which fs-test-harness became at v4.0.0: the
   # matrix runs through it, in CI as on a developer's Windows VM (#6).
   HARNESS_URL: https://github.com/antimatter-studios/fs-windows-test-harness.git
